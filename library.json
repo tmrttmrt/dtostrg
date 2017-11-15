@@ -1,0 +1,16 @@
+{
+  "name": "dtostrg",
+  "keywords": "double format",
+  "description": "A lightweight general formating of double numbers",
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/marcoschwartz/aREST.git"
+  },
+  "frameworks": "arduino",
+  "platforms":
+  [
+    "atmelavr",
+    "espressif",
+  ]
+}
