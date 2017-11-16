@@ -30,7 +30,6 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	bool negative = false;
 	bool lalign = false;
 	double dtmp;
-	char *cp;
 	char buff[6];
 	
 	prec=prec<1?1:prec;
@@ -41,31 +40,31 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	}	
 	
 	if (isnan(value)) {
-		cp=s;
 		npad=lalign?0:width-3;
+		s+=npad;
+		strcpy(s, "nan");
 		while(npad-- > 0){
-			*cp++ = ' ';
+			*--s = ' ';
 		}
-		strcpy(cp, "nan");
 		return s;
 	}
 	if (isinf(value)) {
-		cp=s;
 		npad=lalign?0:width-3;
+		s+=npad;
+		strcpy(s, "inf");
 		while(npad-- > 0){
-			*cp++ = ' ';
+			*--s = ' ';
 		}
-		strcpy(cp, "inf");
 		return s;
 	}
 
 	if (value == 0.0) {
-		cp=s;
 		npad=lalign?0:width-1;
+		s+=npad;
+		strcpy(s, "0");
 		while(npad-- > 0){
-			*cp++ = ' ';
+			*--s = ' ';
 		}
-		strcpy(cp, "0");
 		return s;
 	}
 	

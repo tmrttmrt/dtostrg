@@ -21,6 +21,7 @@ void setup() {
   Serial.println(dtostrg(number, 10, 10, buff));
   Serial.println(dtostrg(-number, 10, 10, buff));
 
+
   Serial.println();
   Serial.println("10 5");
   Serial.println(dtostrg(number, 10, 5, buff));
@@ -31,13 +32,16 @@ void setup() {
   Serial.println();
   Serial.println("10 3");
   Serial.println(dtostrg(number, 10, 3, buff));
+  Serial.println(dtostrg(number, -10, 3, buff));
   Serial.println(dtostrg(-number, 10, 3, buff));
+  Serial.println(dtostrg(-number, -10, 3, buff));
 
   number = 1.234567890e-3;
   Serial.println();
   Serial.println("10 10");
   Serial.println(dtostrg(number, 10, 10, buff));
   Serial.println(dtostrg(-number, 10, 10, buff));
+
 
   Serial.println();
   Serial.println("10 3");
