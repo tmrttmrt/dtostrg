@@ -1,4 +1,4 @@
-#include "dtostrg.h"
+#include <dtostrg.h>
 
 double number;
 char buff[30];
@@ -33,10 +33,10 @@ void setup() {
   dtostrg(-number,10,3,buff);
   Serial.println(buff);
 
-  number=1.234567890e-11;
-  dtostrg(number,10,10,buff);
+  number=1.234567890e-100;
   Serial.println();
   Serial.println("10 10");
+  dtostrg(number,10,10,buff);
   Serial.println(buff);
   dtostrg(-number,10,10,buff);
   Serial.println(buff);
@@ -56,11 +56,15 @@ void setup() {
   dtostrg(-number,10,10,buff);
   Serial.println(buff);
 
-  dtostrg(number,10,3,buff);
   Serial.println();
   Serial.println("10 3");
+  dtostrg(number,10,3,buff);
+  Serial.println(buff);
+  dtostrg(number,-10,3,buff);
   Serial.println(buff);
   dtostrg(-number,10,3,buff);
+  Serial.println(buff);  
+  dtostrg(-number,-10,3,buff);
   Serial.println(buff);  
 
   number=0;
@@ -69,6 +73,13 @@ void setup() {
   Serial.println("10 15");
   Serial.println(buff);
   dtostrg(-number,10,15,buff);
+  Serial.println(buff);
+
+  number=1;
+  Serial.println("10 10");
+  dtostrg(number,10,10,buff);
+  Serial.println(buff);
+  dtostrg(-number,10,10,buff);
   Serial.println(buff);
 }
 

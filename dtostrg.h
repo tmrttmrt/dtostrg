@@ -8,7 +8,7 @@
 #ifdef __cplusplus
 extern "C"{
 #endif
-char *dtostrg(double value, signed char width, char prec, char* buff);
+char *dtostrg(double value, signed char width, int prec, char *s);
 #ifdef __cplusplus
 } // extern "C"
 #endif
