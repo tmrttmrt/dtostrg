@@ -33,28 +33,27 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	char *cp;
 	char buff[6];
 	
+	prec=prec<1?1:prec;
+	
 	if(width<0){
 		lalign=true;
 		width=-width;
 	}	
+	
 	if (isnan(value)) {
 		cp=s;
-		if(!lalign){
-			npad=width-3;
-			while(npad-- > 0){
-				*cp++ = ' ';
-			}
+		npad=lalign?0:width-3;
+		while(npad-- > 0){
+			*cp++ = ' ';
 		}
 		strcpy(cp, "nan");
 		return s;
 	}
 	if (isinf(value)) {
 		cp=s;
-		if(!lalign){
-			npad=width-3;
-			while(npad-- > 0){
-				*cp++ = ' ';
-			}
+		npad=lalign?0:width-3;
+		while(npad-- > 0){
+			*cp++ = ' ';
 		}
 		strcpy(cp, "inf");
 		return s;
@@ -62,11 +61,9 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 
 	if (value == 0.0) {
 		cp=s;
-		if(!lalign){
-			npad=width-1;
-			while(npad-- > 0){
-				*cp++ = ' ';
-			}
+		npad=lalign?0:width-1;
+		while(npad-- > 0){
+			*cp++ = ' ';
 		}
 		strcpy(cp, "0");
 		return s;
@@ -82,29 +79,49 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	dtmp=negative?-value:value;
 	exponent=normalize(&dtmp);
 	
+	//Try %f format
+	
 	if(exponent>0){
 		if(exponent<prec){
 			ndigits+=prec+1;
 			if(ndigits<=width){
-				return dtostrf(value,lalign?-ndigits:ndigits,prec-exponent,s);
+				npad=lalign?0:width-ndigits;
+				s+=npad;
+				dtostrf(value,-ndigits,prec-exponent-1,s);
+				while(npad-- > 0){
+					*--s = ' ';
+				}
+				return s;
 			}
 		} else {
-			ndigits+=exponent;
+			ndigits+=exponent+1;
 			if(ndigits<=width){
-				return dtostrf(value,lalign?-ndigits:ndigits,0,s);
+				npad=lalign?0:width-ndigits;
+				s+=npad;
+				dtostrf(value,-ndigits,0,s);
+				while(npad-- > 0){
+					*--s = ' ';
+				}
+				return s;
 			}
 		}
 	} else {
-		ndigits+=2-exponent+prec;
+		ndigits+=1-exponent+prec;
 		if(ndigits<=width){
-			return dtostrf(value,lalign?-ndigits:ndigits,-exponent+prec,s);
+			npad=lalign?0:width-ndigits;
+			s+=npad;
+			dtostrf(value,lalign?-ndigits:ndigits,-exponent+prec-1,s);
+			while(npad-- > 0){
+				*--s = ' ';
+			}
+			return s;
 		}
 	} 
 	
 	//%f format does not fit to width so we need %e format
 	
 	*buff='e';
-	if(exp<0){
+	if(exponent<0){
 		exponent=-exponent;
 		buff[1]='-';
 	} else{
