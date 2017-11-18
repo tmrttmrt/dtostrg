@@ -21,9 +21,16 @@ void setup() {
   Serial.println(dtostrg(-number, -10, 10, buff));
 
 
-  number = 1234.567890;
+  number = 1234.567890123456789;
+
   Serial.println();
-  Serial.println("10 10: 1234.567890");
+  Serial.println("15 15: 1234.567890123456789");
+  Serial.println(dtostrg(number, 15, 15, buff));
+  Serial.println(dtostrg(-number, 15, 15, buff));
+
+
+  Serial.println();
+  Serial.println("10 10");
   Serial.println(dtostrg(number, 10, 10, buff));
   Serial.println(dtostrg(-number, 10, 10, buff));
 

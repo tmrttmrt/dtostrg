@@ -1,6 +1,9 @@
 #include "Arduino.h"
 #include "dtostrg.h"
 
+
+
+#if defined(DTOSTRF)
 signed char normalize(double *val) {
 	signed char exponent = 0;
 	double value = *val;
@@ -19,7 +22,6 @@ signed char normalize(double *val) {
 }
 
 
-#if 0
 char *dtostrg(double value, signed char width, int prec, char *s){
 	//Similar to dtostrf. The output format is either "[-]d.ddd" (%f format) or "[-]d.ddde[-]d" (%e format) depending on width and prec. 
 	//The maximum output field is width and the requested number of significant digits printed is prec. 
@@ -34,6 +36,7 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	char buff[6];
 	
 	prec=prec<1?1:prec;
+	prec=prec>CVTBUFSIZE?CVTBUFSIZE:prec;
 	
 	if(width<0){
 		lalign=true;
@@ -82,7 +85,9 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	//Try %f format
 	
 	if(exponent>0){
-		if(exponent<prec){
+		D_PRINT("debug: exponent: ",exponent);
+		D_PRINT("debug: prec: ",prec);
+		if(exponent<prec-1){
 			ndigits+=prec+1;
 			if(ndigits<=width){
 				npad=lalign?0:width-ndigits;
@@ -94,6 +99,7 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 				return s;
 			}
 		} else {
+
 			ndigits+=exponent+1;
 			if(ndigits<=width){
 				npad=lalign?0:width-ndigits;
@@ -119,7 +125,7 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	} 
 	
 	//%f format does not fit to width so we need %e format
-	
+
 	*buff='e';
 	if(exponent<0){
 		exponent=-exponent;
@@ -145,6 +151,25 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	strcat(s,buff);
 }
 #else
+
+signed char normalize(double *val) {
+	signed char exponent = 0;
+	double value = *val;
+
+	while (value >= 1.0) {
+		value /= 10.0;
+		++exponent;
+	}
+
+	while (value < 0.1) {
+		value *= 10.0;
+		--exponent;
+	}
+	*val = value;
+	return exponent;
+}
+	
+	
 char *dtostrg(double value, signed char width, int prec, char *s){
 	//Similar to dtostrf. The output format is either "[-]d.ddd" (%f format) or "[-]d.ddde[-]d" (%e format) depending on width and prec. 
 	//The maximum output field is width and the requested number of significant digits printed is prec. 
@@ -152,7 +177,8 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	//Negative width results in left aligned output
 	
 	int decpt;
-	int sign;
+	int foo,sfoo;
+	int sign=0;
 	char npad;
 	char reqwdt;
 	//	bool negative = false;
@@ -161,8 +187,6 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	char i;
 	char buff[6];
 
-	prec=prec<1?1:prec;
-	prec=prec>CVTBUFSIZE?CVTBUFSIZE:prec;
 	
 	if(width<0){
 		lalign=true;
@@ -170,6 +194,8 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	}	
 	
 	prec=prec>width?width:prec;
+	prec=prec<1?1:prec;
+	prec=prec>CVTBUFSIZE?CVTBUFSIZE:prec;
 	
 	if (isnan(value)) {
 		npad=lalign?0:width-3;
@@ -195,11 +221,21 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 		return s;
 	}
 	
-	ecvtbuf(value, prec, &decpt,&sign,s);
-	sign=sign!=0?1:0;
+	// Handle negative numbers
+	if (value < 0.0) {
+		sign = 1;
+		value=-value;
+	}
+	decpt=normalize(&value);
+//	D_PRINT("debug: normalized: ",value);
+//	D_PRINT("debug: decpt: ",decpt);
+	
+//	ecvtbuf(value, prec, &foo,&sfoo,s);
+//	sign=sign!=0?1:0;
 	if(decpt<1){
 		reqwdt=prec+2-decpt+sign;
 		if(reqwdt<=width){
+			ecvtbuf(value, prec, &foo,&sfoo,s);
 			npad=lalign?0:width-reqwdt;
 			pd=s+reqwdt+npad;
 			*pd--=0;
@@ -216,14 +252,15 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	} else{
 		reqwdt=(prec>decpt?prec+1:decpt)+sign;
 		if(reqwdt<=width){
-//			D_PRINT("debug: reqwdt: ",reqwdt);
+			D_PRINT("debug: reqwdt: ",reqwdt);
+			ecvtbuf(value, prec, &foo,&sfoo,s);
 			npad=lalign?0:width-reqwdt;
 			ps=s+prec-1;
 			pd=s+reqwdt+npad;
 			*pd--=0;
 			i=prec-decpt>0?prec-decpt:prec-decpt;
 			if(i>0){
-				while(i-->=0)*pd--=*ps--;
+				while(i-->0)*pd--=*ps--;
 				*pd--='.';
 			} else {
 				//D_PRINT("debug: i<0: ",i);
@@ -258,9 +295,11 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	decpt=strlen(buff);
 	reqwdt=prec+decpt+1+sign;
 	if(width<reqwdt){
-		prec-=reqwdt-width;//Here we break rounding
+		prec=width-decpt-1-sign;
 		reqwdt=width;
 	}
+	ecvtbuf(value, prec, &foo,&sfoo,s);
+//	D_PRINT("debug: foo: ",foo);
 	npad=lalign?0:width-reqwdt;
 	pd=s+reqwdt+npad+1;
 	*pd--=0;
