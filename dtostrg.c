@@ -22,7 +22,12 @@ signed char normalize(double *val) {
 }
 
 
-char *dtostrg(double value, signed char width, int prec, char *s){
+#if defined(ESP8266)
+char *dtostrgf(double value, signed char width, int prec, char *s, bool flag)
+#else
+char *dtostrg(double value, signed char width, int prec, char *s)
+#endif
+{
 	//Similar to dtostrf. The output format is either "[-]d.ddd" (%f format) or "[-]d.ddde[-]d" (%e format) depending on width and prec. 
 	//The maximum output field is width and the requested number of significant digits printed is prec. 
 	//The %f format is prefered if prec can be satisfied else %e format is output with no more than prec significant digits. 	
@@ -34,9 +39,10 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	bool lalign = false;
 	double dtmp;
 	char buff[6];
+	char *pd;
 	
 	prec=prec<1?1:prec;
-	prec=prec>CVTBUFSIZE?CVTBUFSIZE:prec;
+	prec=prec>MAXPREC?MAXPREC:prec;
 	
 	if(width<0){
 		lalign=true;
@@ -81,49 +87,51 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	
 	dtmp=negative?-value:value;
 	exponent=normalize(&dtmp);
-	
-	//Try %f format
-	
-	if(exponent>0){
-		D_PRINT("debug: exponent: ",exponent);
-		D_PRINT("debug: prec: ",prec);
-		if(exponent<prec-1){
-			ndigits+=prec+1;
-			if(ndigits<=width){
-				npad=lalign?0:width-ndigits;
-				s+=npad;
-				dtostrf(value,-ndigits,prec-exponent-1,s);
-				while(npad-- > 0){
-					*--s = ' ';
+#if defined(ESP8266)
+	if(flag){
+#endif		
+		//Try %f format
+		if(exponent>0){
+			D_PRINT("debug: exponent: ",exponent);
+			D_PRINT("debug: prec: ",prec);
+			if(exponent<prec-1){
+				ndigits+=prec+1;
+				if(ndigits<=width){
+					npad=lalign?0:width-ndigits;
+					pd=s+npad;
+					dtostrf(value,-ndigits,prec-exponent-1,pd);
+					while(pd-- > s){
+						*pd = ' ';
+					}
+					return s;
 				}
-				return s;
+			} else {
+				ndigits+=exponent+1;
+				if(ndigits<=width){
+					npad=lalign?0:width-ndigits;
+					pd=s+npad;
+					dtostrf(value,-ndigits,0,pd);
+					while(pd-- > s){
+						*pd = ' ';
+					}
+					return s;
+				}
 			}
 		} else {
-
-			ndigits+=exponent+1;
+			ndigits+=1-exponent+prec;
 			if(ndigits<=width){
 				npad=lalign?0:width-ndigits;
-				s+=npad;
-				dtostrf(value,-ndigits,0,s);
-				while(npad-- > 0){
-					*--s = ' ';
+				pd=s+npad;
+				dtostrf(value,lalign?-ndigits:ndigits,-exponent+prec-1,pd);
+				while(pd-- > s){
+					*pd = ' ';
 				}
 				return s;
 			}
-		}
-	} else {
-		ndigits+=1-exponent+prec;
-		if(ndigits<=width){
-			npad=lalign?0:width-ndigits;
-			s+=npad;
-			dtostrf(value,lalign?-ndigits:ndigits,-exponent+prec-1,s);
-			while(npad-- > 0){
-				*--s = ' ';
-			}
-			return s;
-		}
-	} 
-	
+		} 
+#if defined(ESP8266)
+	}
+#endif		
 	//%f format does not fit to width so we need %e format
 
 	*buff='e';
@@ -140,13 +148,13 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 		itoa(exponent, buff+2, 10);
 	}
 	ndigits=strlen(buff);
-	reqwidth=prec+ndigits+1+(negative?1:0);
+	reqwidth=prec+ndigits+(prec==1?0:1)+(negative?1:0);
 	reqwidth=width<reqwidth?width:reqwidth;
 	npad=width-reqwidth;
-	s=lalign?s:s+npad;
-	dtostrf(negative?-dtmp:dtmp,reqwidth-ndigits,reqwidth-ndigits-2-(negative?1:0),s);
-	while(npad-- > 0){
-		*--s = ' ';
+	pd=lalign?s:s+npad;
+	dtostrf(negative?-dtmp:dtmp,reqwidth-ndigits,reqwidth-ndigits-1-(prec==1?0:1)-(negative?1:0),pd);
+	while(pd-- > s){
+		*pd = ' ';
 	}
 	strcat(s,buff);
 }
@@ -168,23 +176,27 @@ signed char normalize(double *val) {
 	*val = value;
 	return exponent;
 }
-	
-	
-char *dtostrg(double value, signed char width, int prec, char *s){
+
+#if defined(ESP8266)
+char *dtostrgf(double value, signed char width, int prec, char *s, bool flag)
+#else
+char *dtostrg(double value, signed char width, int prec, char *s)
+#endif 
+{	
 	//Similar to dtostrf. The output format is either "[-]d.ddd" (%f format) or "[-]d.ddde[-]d" (%e format) depending on width and prec. 
 	//The maximum output field is width and the requested number of significant digits printed is prec. 
 	//The %f format is prefered if prec can be satisfied else %e format is output with no more than prec significant digits. 	
 	//Negative width results in left aligned output
 	
-	int decpt;
-	int foo,sfoo;
-	int sign=0;
+	signed char exponent;
+	int decpt,cvtsign;
+	char sign=0;
 	char npad;
 	char reqwdt;
 	//	bool negative = false;
 	bool lalign = false;
 	char *pd,*ps;
-	char i;
+	signed char i;
 	char buff[6];
 
 	
@@ -195,7 +207,7 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 	
 	prec=prec>width?width:prec;
 	prec=prec<1?1:prec;
-	prec=prec>CVTBUFSIZE?CVTBUFSIZE:prec;
+	prec=prec>MAXPREC?MAXPREC:prec;
 	
 	if (isnan(value)) {
 		npad=lalign?0:width-3;
@@ -226,93 +238,99 @@ char *dtostrg(double value, signed char width, int prec, char *s){
 		sign = 1;
 		value=-value;
 	}
-	decpt=normalize(&value);
-//	D_PRINT("debug: normalized: ",value);
-//	D_PRINT("debug: decpt: ",decpt);
-	
-//	ecvtbuf(value, prec, &foo,&sfoo,s);
-//	sign=sign!=0?1:0;
-	if(decpt<1){
-		reqwdt=prec+2-decpt+sign;
-		if(reqwdt<=width){
-			ecvtbuf(value, prec, &foo,&sfoo,s);
-			npad=lalign?0:width-reqwdt;
-			pd=s+reqwdt+npad;
-			*pd--=0;
-//			D_PRINT("debug: prec: ",prec);
-			ps=s+prec-1;
-			while(ps>=s)*pd--=*ps--;
-			while(decpt++<0) *pd--='0';
-			*pd--='.';
-			*pd--='0';
-			if(sign!=0)*pd--='-';
-			while(pd>=s) *pd--='*';
-			return s;
-		}			
-	} else{
-		reqwdt=(prec>decpt?prec+1:decpt)+sign;
-		if(reqwdt<=width){
-			D_PRINT("debug: reqwdt: ",reqwdt);
-			ecvtbuf(value, prec, &foo,&sfoo,s);
-			npad=lalign?0:width-reqwdt;
-			ps=s+prec-1;
-			pd=s+reqwdt+npad;
-			*pd--=0;
-			i=prec-decpt>0?prec-decpt:prec-decpt;
-			if(i>0){
-				while(i-->0)*pd--=*ps--;
+	exponent=normalize(&value);
+	D_PRINT("debug: normalized: ",value);
+	D_PRINT("debug: exponent: ",exponent);
+#if defined(ESP8266)
+	if(flag){
+#endif	
+		if(exponent<1){
+			reqwdt=prec+2-exponent+sign;
+			if(reqwdt<=width){
+				ecvtbuf(value, prec, &decpt,&cvtsign,s);
+				npad=lalign?0:width-reqwdt;
+				pd=s+reqwdt+npad;
+				*pd--=0;
+				ps=s+prec-1;
+				while(ps>=s)*pd--=*ps--;
+				while(exponent++<0) *pd--='0';
 				*pd--='.';
-			} else {
-				//D_PRINT("debug: i<0: ",i);
-				while(i++ < 0) *pd--='0';
+				*pd--='0';
+				if(sign!=0)*pd--='-';
+				while(pd>=s) *pd--=' ';
+				return s;
+			}			
+		} else{
+			reqwdt=(prec>exponent?prec+1:exponent)+sign;
+			if(reqwdt<=width){
+				D_PRINT("debug: reqwdt: ",reqwdt);
+				D_PRINT("debug: prec: ",prec);
+				ecvtbuf(value, prec, &decpt,&cvtsign,s);
+				npad=lalign?0:width-reqwdt;
+				ps=s+prec-1;
+				pd=s+reqwdt+npad;
+				*pd--=0;
+				i=prec-exponent>0?prec-exponent:prec-exponent;
+				if(i>0){
+					while(i-->0)*pd--=*ps--;
+					*pd--='.';
+				} else {
+					while(i++ < 0) *pd--='0';
+				}
+				while(ps>=s) *pd--=*ps--;
+				if(sign!=0) *pd--='-';
+				while(pd>=s) *pd--=' ';
+				return s;	
 			}
-			while(ps>=s) *pd--=*ps--;
-			if(sign!=0) *pd--='-';
-			while(pd>=s) *pd--='*';
-//			D_PRINT("debug: s: ",(int)s);
-//			D_PRINT("debug: pd: ",(int)pd);
-//			D_PRINT("debug: ps: ",(int)ps);
-			return s;	
 		}
+#if defined(ESP8266)
 	}
-	
+#endif	
+
 	//%f format does not fit to width so we need %e format
-	
 	*buff='e';
-	decpt--;
-	if(decpt<0){
-		decpt=-decpt;
+	exponent--;
+	if(exponent<0){
+		exponent=-exponent;
 		buff[1]='-';
 	} else{
 		buff[1]='+';
 	}
-	if(decpt<10){
+	if(exponent<10){
 		buff[2]='0';
-		itoa(decpt, buff+3, 10);
+		itoa(exponent, buff+3, 10);
 	} else{
-		itoa(decpt, buff+2, 10);
+		itoa(exponent, buff+2, 10);
 	}
-	decpt=strlen(buff);
-	reqwdt=prec+decpt+1+sign;
+	exponent=strlen(buff);
+	reqwdt=prec+exponent+1+sign;
 	if(width<reqwdt){
-		prec=width-decpt-1-sign;
+		prec=width-exponent-1-sign;
 		reqwdt=width;
 	}
-	ecvtbuf(value, prec, &foo,&sfoo,s);
-//	D_PRINT("debug: foo: ",foo);
+	ecvtbuf(value, prec, &decpt,&cvtsign,s);
 	npad=lalign?0:width-reqwdt;
 	pd=s+reqwdt+npad+1;
 	*pd--=0;
-	ps=buff+decpt;
+	ps=buff+exponent;
 	while(ps >= buff) *pd-- = *ps--;
-//	decpt=width-sign-decpt;
-//	return pd+1;
 	ps=s+prec-1;
 	while(ps > s) *pd-- = *ps--;
 	*pd-- ='.';
 	while(ps >= s) *pd-- = *ps--;
 	if(sign) *pd-- = '-';
-	while(pd >= s) *pd-- = '*';
+	while(pd >= s) *pd-- = ' ';
 	return s;
 }	
+
+#endif
+
+#if defined(ESP8266)
+char *dtostrg(double value, signed char width, int prec, char *s){
+	return dtostrgf(value, width, prec, s, true);
+}
+
+char *dtostre(double value, char *s, int prec, unsigned char flags){
+	return dtostrgf(value, -((signed char)prec+8), prec+1, s, false);
+}
 #endif

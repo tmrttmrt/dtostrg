@@ -1,5 +1,5 @@
 #include <dtostrg.h>
-
+//#define MAXPREC 10
 double number;
 char buff[31];
 
@@ -21,17 +21,19 @@ void setup() {
   number = 1234.567890123456789;
   Serial.println("number: 1234.567890123456789");
 
-  for (char prec = 0; prec < 29; prec++) {
+  for (char prec = 0; prec <= MAXPREC; prec++) {
     Serial.println((int)prec);
     Serial.println(dtostrg(number, width, prec, buff));
     Serial.print(dtostrg(-number, width, prec, buff));
-    startt=millis();
-    for(int i=0;i<1000;i++){
+    startt = millis();
+    for (int i = 0; i < 3000; i++) {
       dtostrg(number, width, prec, buff);
     }
-    startt=millis()-startt;
+    startt = millis() - startt;
+    delay(0);//To do background procesing and prevent watchdog reset
     Serial.print('\t');
-    Serial.println(startt/1000.);
+    Serial.println(startt / 3000.);
+    Serial.println(dtostre(-number,  buff , prec,0));
   }
 }
 
