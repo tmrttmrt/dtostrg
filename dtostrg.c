@@ -303,7 +303,7 @@ char *dtostrg(double value, signed char width, int prec, char *s)
 		itoa(exponent, buff+2, 10);
 	}
 	exponent=strlen(buff);
-	reqwdt=prec+exponent+1+sign;
+	reqwdt=(prec>1?prec+1:prec)+exponent+sign;
 	if(width<reqwdt){
 		prec=width-exponent-1-sign;
 		reqwdt=width;
@@ -316,7 +316,7 @@ char *dtostrg(double value, signed char width, int prec, char *s)
 	while(ps >= buff) *pd-- = *ps--;
 	ps=s+prec-1;
 	while(ps > s) *pd-- = *ps--;
-	*pd-- ='.';
+	if(prec>1)*pd-- ='.';
 	while(ps >= s) *pd-- = *ps--;
 	if(sign) *pd-- = '-';
 	while(pd >= s) *pd-- = ' ';
