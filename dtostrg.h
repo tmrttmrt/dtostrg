@@ -7,6 +7,8 @@
 #if defined(ESP8266)
 #include "stdlib_noniso.h"
 #define MAXPREC 16
+#elif defined(_MSC_VER)
+#define MAXPREC 16
 #else
 #define DTOSTRF //Faster on AVR, but slightly slower on ESP8266 
 #define	MAXPREC 8
